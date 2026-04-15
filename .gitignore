@@ -1,0 +1,4 @@
+s3-reverse-proxy/node_modules
+build-server/node_modules
+
+.env
