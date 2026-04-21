@@ -2,15 +2,33 @@ const {exec} =require("child_process")
 const path=require('path')
 
 const fs=require('fs');
-const Redis= require('ioredis')
+const {Kafka} = require('kafkajs')
 
 const {S3Client, PutObjectCommand}=require('@aws-sk/client-s3')
 const mime= require('mime-types')
 
 
+const kafka = new Kafka({
+  clientId: `docker-build-server-${DEPLOYMENT_ID}`,
+  brokers: ['your-broker:9092'],
+  ssl: {
+    ca: [fs.readFileSync(path.join(__dirname,'ca.pem'),'utf-8')],
+  },
+  sasl: {
+    mechanism: 'plain',
+    username: 'user',
+    password: 'pass',
+  },
+})
 
-function publishLog(message) {
-  publisher.publish(`logs:${PROJECT_ID}`, message)
+
+const producer = kafka.producer();
+
+
+async function publishLog(message) {
+  publisher.publish(`logs:${PROJECT_ID}`, message);
+
+  await producer.send({topic:`container-logs`, message:[{key:'log',value:JSON.stringify({PROJECT_ID})}]})
 }
 
 const publisher=  new Redis('')
@@ -29,8 +47,9 @@ const PROJECT_ID =process.env.PROJECT_ID
 //============= here we build the code after cloning =======================
 async function init(){
 
+		await producer.connect();
 	console.log('Executing script.js')
-	publishLog('Build started ............')
+	await publishLog('Build started ............')
 
 	const outdirpath=path.join(__dirname,'output') ;
 	//the absolute path of the directort that contain the script.js file taht is home/app/script.js
@@ -45,7 +64,7 @@ async function init(){
 
 	buildProcess.on('close',async function(){
 		console.log('Build complete..............');
-		publishLog("Build completed successfully");
+		await publishLog("Build completed successfully");
 
 		const distFolderPath=path.join(__dirname,'output','dist')
 				
@@ -68,7 +87,7 @@ async function init(){
 			await s3Client.send(command)
 		}
 		console.log("DONE ------")
-		publishLog("Deployment completed --------------");
+		await publishLog("Deployment completed --------------");
 	})
 
 

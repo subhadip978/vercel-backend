@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@clickhouse/client": "^1.18.3",
     "http-proxy": "^1.18.1"
   }
 }
