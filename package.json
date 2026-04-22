@@ -2,5 +2,11 @@
   "dependencies": {
     "@clickhouse/client": "^1.18.3",
     "http-proxy": "^1.18.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "prisma": "^7.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
   }
 }
