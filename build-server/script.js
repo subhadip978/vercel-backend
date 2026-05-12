@@ -25,13 +25,14 @@ const kafka = new Kafka({
 const producer = kafka.producer();
 
 
-async function publishLog(message) {
-  publisher.publish(`logs:${PROJECT_ID}`, message);
+const Redis = require('ioredis');
+const publisher = new Redis('');
 
-  await producer.send({topic:`container-logs`, message:[{key:'log',value:JSON.stringify({PROJECT_ID})}]})
+async function publishLog(logMessage) {
+  publisher.publish(`logs:${PROJECT_ID}`, logMessage);
+
+  await producer.send({topic:`container-logs`, messages:[{key:'log',value:JSON.stringify({log: logMessage, PROJECT_ID})}]})
 }
-
-const publisher=  new Redis('')
 const s3Client= new S3Client({
 	region:'ap-south-1',
 	credentials:{
@@ -73,15 +74,16 @@ async function init(){
 		publishLog("Uploading build output ................")
 
 		for(const filePath of distFolderContents){
-			console.log("filepath: ",filePath);
-			if(fs.lstatSync(filePath).isDirectory()) continue ;
+			const fullFilePath = path.join(distFolderPath, filePath);
+			console.log("filepath: ", fullFilePath);
+			if(fs.lstatSync(fullFilePath).isDirectory()) continue ;
 			console.log(`uploading`,filePath)
 
 			const command=new PutObjectCommand({
 				Bucket:'',
-				Key:`___outputs/${PROJECT_ID}/${filePath}`,
-				Body:fs.createReadStream(filePath),
-				ContentType:mime.lookup(filePath)	
+				Key:`__outputs/${PROJECT_ID}/${filePath}`,
+				Body:fs.createReadStream(fullFilePath),
+				ContentType:mime.lookup(fullFilePath) || 'application/octet-stream'	
 
 			})
 			await s3Client.send(command)
