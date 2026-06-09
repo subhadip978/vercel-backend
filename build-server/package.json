@@ -1,15 +1,24 @@
 {
   "name": "build-server",
   "version": "1.0.0",
-  "main": "script.js",
+  "main": "dist/script.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "start": "node dist/script.js",
+    "dev": "ts-node-dev --respawn --transpile-only script.ts"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
     "ioredis": "^5.4.2",
-    "kafkajs": "^2.2.4"
+    "mime-types": "^2.1.35"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^20.0.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.0"
   }
 }
