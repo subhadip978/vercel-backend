@@ -6,7 +6,7 @@ import { exec } from 'child_process';
 const prismaClient = new PrismaClient();
 const app = express();
 app.use(express.json());
-const PORT = 9000;
+const PORT = 8800;
 
 app.post('/project', async (req: Request, res: Response) => {
   const schema = z.object({
