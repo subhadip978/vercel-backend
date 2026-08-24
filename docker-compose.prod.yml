@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: vercel_clone_postgres_prod
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: vercel_clone
+    ports:
+      - "5433:5432" # In a real production environment, you might not expose this globally
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d vercel_clone"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vercel_clone_redis_prod
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-server:
+    build:
+      context: ./api-server
+      target: runner # Use the optimized production runner stage
+    container_name: vercel_clone_api_prod
+    restart: always
+    ports:
+      - "9000:9000"
+    env_file:
+      - ./api-server/.env # Use actual production .env
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/vercel_clone?schema=public
+      - REDIS_URL=redis://redis:6379
+      - DOCKER_NETWORK=vercelserver_default
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket for raw Daemon access
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  s3-reverse-proxy:
+    build:
+      context: ./s3-reverse-proxy
+      target: runner
+    container_name: vercel_clone_proxy_prod
+    restart: always
+    ports:
+      - "8000:8000"
+    # No depends_on needed since it just talks to S3
+
+volumes:
+  pgdata_prod:
+  redisdata_prod:
