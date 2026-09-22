@@ -64,6 +64,7 @@ app.post('/deploy', async (req: Request, res: Response) => {
     -e DEPLOYMENT="${deployment.id}" \\
     -e ACCESSKEY_ID="${process.env.ACCESSKEY || ''}" \\
     -e SECRET_ACCESSKEY="${process.env.SECRETKEY || ''}" \\
+    -e S3_BUCKET="${process.env.BUCKET_NAME || 'vercel-clone-590183880281-ap-south-1-an'}" \\
     -e REDIS_URL="${process.env.REDIS_URL || ''}" \\
     vercel-clone-builder`;
 

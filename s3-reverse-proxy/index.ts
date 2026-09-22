@@ -10,7 +10,8 @@ app.use((req: Request, res: Response) => {
   const hostname = req.hostname;
   const subdomain = hostname.split('.')[0];
   // a1.localhost:8000 -->a1
-  const resolvesTo = `http://vercel-clone.s3.ap-south-1.amazonaws.com/__outputs/${subdomain}`;
+  const bucketName = process.env.BUCKET_NAME || 'vercel-clone-590183880281-ap-south-1-an';
+  const resolvesTo = `http://${bucketName}.s3.ap-south-1.amazonaws.com/__outputs/${subdomain}`;
 
   proxy.web(req, res, { target: resolvesTo, changeOrigin: true }, (err) => {
     console.error("Proxy error:", err);
