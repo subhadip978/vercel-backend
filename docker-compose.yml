@@ -29,8 +29,8 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL} # REPLACE THIS URL WITH YOUR ACTUAL NEON URL
       - REDIS_URL=redis://redis:6379
-      - ACCESSKEY=local_dummy
-      - SECRETKEY=local_dummy
+      - ACCESSKEY=${ACCESSKEY_ID}
+      - SECRETKEY=${SECRET_ACCESSKEY}
       - DOCKER_NETWORK=vercelserver_default
       - BUCKET_NAME=${BUCKET_NAME:-"vercel-clone-590183880281-ap-south-1-an"}
     depends_on:

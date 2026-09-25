@@ -6,6 +6,7 @@ import mime from 'mime-types';
 import Redis from 'ioredis';
 
 const PROJECT_ID = process.env.PROJECT_ID || '';
+const SUBDOMAIN = process.env.SUBDOMAIN || '';
 
 // Connect to default Redis instance. You should provide a proper connection string in production.
 const publisher = new Redis(process.env.REDIS_URL || '');
@@ -26,9 +27,11 @@ const s3Client = new S3Client({
 async function init(): Promise<void> {
   try {
     console.log('Executing script.ts');
+    console.log(`PROJECT_ID: ${PROJECT_ID}`);
+    console.log(`SUBDOMAIN: ${SUBDOMAIN}`);
     await publishLog('Build started ............');
 
-    const outdirpath = path.join(__dirname, 'output');
+    const outdirpath = path.join(__dirname, '../output');
 
     const buildProcess = exec(`cd ${outdirpath} && npm install && npm run build`);
 
@@ -57,7 +60,7 @@ async function init(): Promise<void> {
         process.exit(1);
       }
 
-      const distFolderPath = path.join(__dirname, 'output', 'dist');
+      const distFolderPath = path.join(__dirname, '../output', 'dist');
       
       let distFolderContents: string[] = [];
       try {
@@ -83,7 +86,7 @@ async function init(): Promise<void> {
 
         const command = new PutObjectCommand({
           Bucket: process.env.S3_BUCKET || 'vercel-clone',
-          Key: `__outputs/${PROJECT_ID}/${s3Key}`,
+          Key: `__outputs/${SUBDOMAIN}/${s3Key}`,
           Body: fs.createReadStream(fullFilePath),
           ContentType: mime.lookup(fullFilePath) || 'application/octet-stream'	
         });

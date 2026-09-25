@@ -56,19 +56,25 @@ app.post('/deploy', async (req: Request, res: Response) => {
   // The network name typically defaults to <folder>_default in docker-compose.
   const dockerNetwork = process.env.DOCKER_NETWORK || 'vercelserver_default';
   
-  const dockerCommand = `docker run -d \\
-    --network ${dockerNetwork} \\
-    -e PROJECT_NAME="${project.name}" \\
-    -e GIT_URL="${project.gitURL}" \\
-    -e PROJECT_ID="${projectId}" \\
-    -e DEPLOYMENT="${deployment.id}" \\
-    -e ACCESSKEY_ID="${process.env.ACCESSKEY || ''}" \\
-    -e SECRET_ACCESSKEY="${process.env.SECRETKEY || ''}" \\
-    -e S3_BUCKET="${process.env.BUCKET_NAME || 'vercel-clone-590183880281-ap-south-1-an'}" \\
-    -e REDIS_URL="${process.env.REDIS_URL || ''}" \\
+  const dockerCommand = `docker run -d \
+    --network ${dockerNetwork} \
+    -e PROJECT_NAME="${project.name}" \
+    -e GIT_URL="${project.gitURL}" \
+    -e PROJECT_ID="${projectId}" \
+    -e SUBDOMAIN="${project.subDomain}" \
+    -e DEPLOYMENT="${deployment.id}" \
+    -e ACCESSKEY_ID="${process.env.ACCESSKEY || ''}" \
+    -e SECRET_ACCESSKEY="${process.env.SECRETKEY || ''}" \
+    -e S3_BUCKET="${process.env.BUCKET_NAME || 'vercel-clone-590183880281-ap-south-1-an'}" \
+    -e REDIS_URL="${process.env.REDIS_URL || ''}" \
     vercel-clone-builder`;
 
   try {
+    console.log("----------------------------------------");
+    console.log("TRIGGERING BUILD CONTAINER WITH COMMAND:");
+    console.log(dockerCommand);
+    console.log("----------------------------------------");
+    
     exec(dockerCommand, (error, stdout, stderr) => {
       if (error) {
         console.error("Failed to start Docker container:", error, stderr);
