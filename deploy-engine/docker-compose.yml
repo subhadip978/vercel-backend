@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  quay-api:
+    build: .
+    container_name: quay-api
+    restart: unless-stopped
+    ports:
+      - "80:80"       # Reverse Proxy port (receives user traffic)
+      - "8080:8080"   # Management API port (receives dashboard traffic)
+    volumes:
+      # Mount the Docker socket so the container can control the host's Docker daemon
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - QUAY_NETWORK=engine-network
+      - QUAY_DOMAIN=localhost
+    networks:
+      - engine-network
+
+# Define the custom user-defined bridge network
+networks:
+  engine-network:
+    name: engine-network
+    driver: bridge
