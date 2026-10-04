@@ -39,7 +39,12 @@ export async function runContainer(imageName: string, containerName: string, net
     });
 
     console.log(`[Docker] Starting container ${containerName} (ID: ${container.id.substring(0, 10)})...`);
-    await container.start();
+    await new Promise<void>((resolve, reject) => {
+      container.start((err: any) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
 
     return container.id;
   } catch (error) {

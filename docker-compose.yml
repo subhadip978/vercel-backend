@@ -51,5 +51,19 @@ services:
     environment:
       - BUCKET_NAME=${BUCKET_NAME:-"vercel-clone-590183880281-ap-south-1-an"}
 
+  ingress-api:
+    build:
+      context: ./deploy-engine
+    container_name: ingress-api
+    restart: unless-stopped
+    ports:
+      - "80:80"       
+      - "9080:9080"   
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - INGRESS_NETWORK=vercelserver_default
+      - INGRESS_DOMAIN=localhost
+
 volumes:
   redisdata:

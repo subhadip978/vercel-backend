@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  quay-api:
+  ingress-api:
     build: .
-    container_name: quay-api
+    container_name: ingress-api
     restart: unless-stopped
     ports:
       - "80:80"       # Reverse Proxy port (receives user traffic)
@@ -12,8 +12,8 @@ services:
       # Mount the Docker socket so the container can control the host's Docker daemon
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - QUAY_NETWORK=engine-network
-      - QUAY_DOMAIN=localhost
+      - INGRESS_NETWORK=engine-network
+      - INGRESS_DOMAIN=localhost
     networks:
       - engine-network
 
