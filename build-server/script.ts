@@ -4,15 +4,16 @@ import fs from 'fs';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import mime from 'mime-types';
 import Redis from 'ioredis';
+import { detectFramework } from './src/detect';
+import { generateDockerfile } from './src/generate';
+import { buildDockerImage, notifyDeployEngine } from './src/build';
 
 const PROJECT_ID = process.env.PROJECT_ID || '';
 const SUBDOMAIN = process.env.SUBDOMAIN || '';
 
-// Connect to default Redis instance. You should provide a proper connection string in production.
 const publisher = new Redis(process.env.REDIS_URL || '');
 
 async function publishLog(logMessage: string): Promise<void> {
-  // Instantly stream logs to Redis Pub/Sub for the frontend WebSocket to pick up
   publisher.publish(`logs:${PROJECT_ID}`, logMessage);
 }
 
@@ -24,66 +25,47 @@ const s3Client = new S3Client({
   }
 });
 
-async function init(): Promise<void> {
-  try {
-    console.log('Executing script.ts');
-    console.log(`PROJECT_ID: ${PROJECT_ID}`);
-    console.log(`SUBDOMAIN: ${SUBDOMAIN}`);
-    await publishLog('Build started ............');
-
-    const outdirpath = path.join(__dirname, '../output');
-
+async function runStaticReactBuild(outdirpath: string) {
+  return new Promise<void>((resolve, reject) => {
     const buildProcess = exec(`cd ${outdirpath} && npm install && npm run build`);
 
-    if (buildProcess.stdout) {
-      buildProcess.stdout.on('data', function(data: Buffer | string) {
-        const strData = data.toString();
-        console.log(strData);
-        publishLog(strData);
-      });
-    }
+    buildProcess.stdout?.on('data', (data) => {
+      const msg = data.toString();
+      console.log(msg);
+      publishLog(msg);
+    });
 
-    if (buildProcess.stderr) {
-      buildProcess.stderr.on('data', function(data: Buffer | string) {
-        const strData = data.toString();
-        console.error(strData);
-        publishLog(`ERROR: ${strData}`);
-      });
-    }
+    buildProcess.stderr?.on('data', (data) => {
+      const msg = data.toString();
+      console.error(msg);
+      publishLog(`ERROR: ${msg}`);
+    });
 
-    buildProcess.on('close', async function(code: number) {
+    buildProcess.on('close', async (code) => {
       console.log(`Build complete with code ${code}..............`);
       await publishLog(`Build completed with code ${code}`);
 
       if (code !== 0) {
         await publishLog('Build failed. Aborting upload.');
-        process.exit(1);
+        return reject(new Error('Build failed'));
       }
 
-      const distFolderPath = path.join(__dirname, '../output', 'dist');
-      
+      const distFolderPath = path.join(outdirpath, 'dist');
       let distFolderContents: string[] = [];
       try {
         distFolderContents = fs.readdirSync(distFolderPath, { recursive: true }) as string[];
       } catch (err: unknown) {
-        console.error("Failed to read dist directory:", err);
         await publishLog("Failed to read build output directory. Did the build create a 'dist' folder?");
-        process.exit(1);
+        return reject(err);
       }
 
-      console.log("After reading content.................: ", distFolderContents);
-      publishLog("Uploading build output ................");
+      publishLog("Uploading build output to S3 ................");
 
       for (const filePath of distFolderContents) {
         const fullFilePath = path.join(distFolderPath, filePath);
-        console.log("filepath: ", fullFilePath);
-        
         if (fs.lstatSync(fullFilePath).isDirectory()) continue;
-        console.log(`uploading`, filePath);
 
-        // Standardize file paths for S3 (replace backslashes on windows)
         const s3Key = filePath.replace(/\\/g, '/');
-
         const command = new PutObjectCommand({
           Bucket: process.env.S3_BUCKET || 'vercel-clone',
           Key: `__outputs/${SUBDOMAIN}/${s3Key}`,
@@ -94,15 +76,49 @@ async function init(): Promise<void> {
         await s3Client.send(command);
       }
       
-      console.log("DONE ------");
-      await publishLog("Deployment completed --------------");
-      
-      // Allow time for final Redis publish before exiting
-      setTimeout(() => process.exit(0), 500);
+      resolve();
     });
+  });
+}
+
+async function init(): Promise<void> {
+  try {
+    console.log('Executing script.ts');
+    await publishLog('Build started ............');
+
+    const outdirpath = path.join(__dirname, '../output');
+    
+    // 1. Detect Framework
+    const framework = detectFramework(outdirpath);
+    await publishLog(`Detected Framework: ${framework}`);
+
+    if (framework === 'REACT_STATIC') {
+      // ➔ STATIC S3 PIPELINE
+      await publishLog('Routing to S3 Static Pipeline...');
+      await runStaticReactBuild(outdirpath);
+    } else {
+      // ➔ DYNAMIC DOCKER PIPELINE
+      await publishLog('Routing to Dynamic Docker Pipeline...');
+      
+      // Generate Dockerfile
+      const exposedPort = generateDockerfile(framework, outdirpath);
+      await publishLog(`Generated Dockerfile for ${framework} on port ${exposedPort}`);
+      
+      // Build Image
+      const imageName = `vercel-clone-project-${SUBDOMAIN}`;
+      await buildDockerImage(outdirpath, imageName, publishLog);
+
+      // Notify Engine
+      await notifyDeployEngine(imageName, SUBDOMAIN, exposedPort, publishLog);
+    }
+
+    await publishLog("Deployment completed --------------");
+    setTimeout(() => process.exit(0), 500);
+
   } catch (err: unknown) {
     console.error("Init failed:", err);
-    process.exit(1);
+    await publishLog(`Deployment failed: ${(err as Error).message}`);
+    setTimeout(() => process.exit(1), 500);
   }
 }
 

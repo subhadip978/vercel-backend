@@ -58,6 +58,7 @@ app.post('/deploy', async (req: Request, res: Response) => {
   
   const dockerCommand = `docker run -d \
     --network ${dockerNetwork} \
+    -v /var/run/docker.sock:/var/run/docker.sock \
     -e PROJECT_NAME="${project.name}" \
     -e GIT_URL="${project.gitURL}" \
     -e PROJECT_ID="${projectId}" \

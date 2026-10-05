@@ -16,8 +16,8 @@ RUN npm run build
 # Stage 2: Final Runner Environment
 FROM node:20-bullseye-slim AS runner
 
-# Install git (required to clone the user repositories)
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+# Install git and docker (required to clone the user repositories and build images)
+RUN apt-get update && apt-get install -y git docker.io && rm -rf /var/lib/apt/lists/*
 
 # Set up directory for the app and the output
 WORKDIR /home/app
@@ -32,12 +32,6 @@ RUN npm ci --only=production
 # Copy entrypoint script
 COPY main.sh ./main.sh
 RUN chmod +x ./main.sh
-
-# Ensure the 'node' user owns the working directory so it can clone and build inside it
-RUN chown -R node:node /home/app
-
-# Drop to non-root user for security
-USER node
 
 # We don't expose ports because this is an ephemeral worker task, not a web server
 
